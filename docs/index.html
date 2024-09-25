@@ -1,0 +1,67 @@
+<html>  
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="utf-8"/>
+        <script src="wasm_boot.js"></script>
+        <script src="wasm_exec.js"></script>
+        <style type="text/css">
+          body {
+                 overflow:hidden;
+               }
+        </style>
+        <script>
+
+
+
+
+const wasmBrowserInstantiate = async (wasmModuleUrl, importObject, decoder) => {
+  let response = undefined;
+
+  // Check if the browser supports streaming instantiation
+  if (WebAssembly.instantiateStreaming) {
+    // Fetch the module, and instantiate it as it is downloading
+    response = await WebAssembly.instantiateStreaming(
+      fetch(wasmModuleUrl).then(
+        (response) => new Response(response.body.pipeThrough(decoder), { status: 200,statusText:"OK",bodyUsed:false, encodeBody: 'manual',headers:{"content-type":"application/wasm"}})
+      ),
+      importObject
+    );
+ 
+  } else {
+    // Fallback to using fetch to download the entire module
+    // And then instantiate the module
+    const fetchAndInstantiateTask = async () => {
+      rsp = await fetch(wasmModuleUrl).then(response =>
+      new Response(response.body.pipeThrough(decoder), { status: 200,statusText:"OK",bodyUsed:false,headers:{"content-type":"application/wasm"}})
+      );
+      wasmArrayBuffer=await rsp.arrayBuffer()
+      return WebAssembly.instantiate(wasmArrayBuffer, importObject);
+    };
+    response = await fetchAndInstantiateTask();
+  }
+
+  return response;
+};
+
+
+
+
+const go = new Go();
+const runWasmAdd = async () => {
+
+  tinygo = new tinyGo();
+  // Instantiate our wasm module
+  const bootloader = await wasmBrowserInstantiate("brotlidecoder.wasm.gz", tinygo.importObject,new DecompressionStream("gzip"));
+  
+  tinygo.run(bootloader.instance);
+
+  const wasmModule = await wasmBrowserInstantiate("jwtdecode.wasm.br", go.importObject, hogosuru_brotli_decoder);
+  go.run(wasmModule.instance);
+
+};
+runWasmAdd();
+
+        </script>
+    </head>
+    <body></body>
+</html>  
